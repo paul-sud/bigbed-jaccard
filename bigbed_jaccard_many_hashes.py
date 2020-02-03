@@ -17,12 +17,13 @@ from multiprocessing import Pool
 from typing import List, Tuple
 import random
 
+
 # Smallest prime larger than chr1 length (248,956,422 on GRCh38)
 CHR_1_PRIME = 248_956_429
 CHR_1_SIZE = 248_956_422
 NUM_HASHES = 100
 
-
+# Set for reproductibility
 random.seed(30)
 
 
