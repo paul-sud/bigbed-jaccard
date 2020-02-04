@@ -2,7 +2,8 @@
 Unlike the other script, here we use a single hash function (so only one hash computed
 per element), store the k elements with the lowest hashes (priority queue) for each set,
 then subsquently compute the jaccard from these signatures (see following for details)
-https://en.wikipedia.org/wiki/MinHash#Variant_with_a_single_hash_function
+https://en.wikipedia.org/wiki/MinHash#Variant_with_a_single_hash_function. This ends up
+being much faster that computing k hashes for every element of the set.
 
 The __future__ annotations buisiness is to avoid complaints when annotating a method
 returning a new instance of a class (at least for python 3.7)
@@ -60,19 +61,22 @@ class PriorityQueue:
         return len(self.heap)
 
     def shrink_to_queue_size(self):
-        self.heap = self.heap[:self.queue_size]
+        """
+        Take the queue_size number of greatest items from the heap. We only need this
+        when merging two heaps together.
+        """
+        self.heap = sorted(self.heap)[-(self.queue_size + 1):-1]
 
     def push(self, elem: Tuple[int, int]):
         """
         We add the new element to the queue, and if we exceed the queue_size we need to
-        pop an element, where the element is a tuple of (hash(item), item).
-
-        Note that we need the sort because heappush maintains the heap invariant, not
-        true sort order
+        pop an element, where the element is a tuple of (hash(item), item). Note that
+        the first item in the order is popped (minimum hash).
         """
-        heapq.heappush(self.heap, elem)
-        self.heap.sort()
-        self.shrink_to_queue_size()
+        if len(self) < self.queue_size:
+            heapq.heappush(self.heap, elem)
+        else:
+            heapq.heappushpop(self.heap, elem)
 
     def merge(self, other: PriorityQueue) -> PriorityQueue:
         """
@@ -152,7 +156,7 @@ def compute_k_minhashes(data: List[Tuple[int, int]], k: int) -> PriorityQueue:
     # assumed that hashes have already been calculated for the virtual interval
     virtual_start, virtual_end = data[0]
     for i in range(virtual_start, virtual_end):
-        current_hash = hasher(i)
+        current_hash = -1 * hasher(i)
         minhashes.push((current_hash, i))
 
     # Now we can iterate over the rest of the data since the virtual interval has had
@@ -173,7 +177,7 @@ def compute_k_minhashes(data: List[Tuple[int, int]], k: int) -> PriorityQueue:
 
         # Compute the hashes of the elements
         for i in range(start_at, end_at):
-            current_hash = hasher(i)
+            current_hash = -1 * hasher(i)
             minhashes.push((current_hash, i))
 
     return minhashes
