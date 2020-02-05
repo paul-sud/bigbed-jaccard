@@ -47,15 +47,15 @@ def main():
 @attr.s(auto_attribs=True)
 class PriorityQueue:
     """
-    Min queue implementation supporting push and pop. We need to wrap around built-in
-    heapq becase its pop would remove the element with the smallest hash (not what we
-    want!).
+    Bounded min queue implementation. We bound it so that the memory footprint remains
+    small (queue size < 1000 for our application). However, checking the length is slow.
 
     Note that we assume two elements will not have the same priority, i.e. no hash
     collisions between the minhashes.
     """
     queue_size: int
     heap: List[Tuple[int, int]] = []
+    queue_at_capacity: bool = False
 
     def __len__(self):
         return len(self.heap)
@@ -66,17 +66,22 @@ class PriorityQueue:
         when merging two heaps together.
         """
         self.heap = sorted(self.heap)[-(self.queue_size + 1):-1]
+        self.queue_at_capacity = True
 
     def push(self, elem: Tuple[int, int]):
         """
         We add the new element to the queue, and if we exceed the queue_size we need to
         pop an element, where the element is a tuple of (hash(item), item). Note that
-        the first item in the order is popped (minimum hash).
+        the first item in the order is popped (minimum hash). Comparing the length to
+        the queue size each time was slow, so instead we use a flag. Peformance now
+        bounded by heapq.heappushpop
         """
-        if len(self) < self.queue_size:
-            heapq.heappush(self.heap, elem)
-        else:
+        if self.queue_at_capacity:
             heapq.heappushpop(self.heap, elem)
+        else:
+            heapq.heappush(self.heap, elem)
+            if len(self) == self.queue_size:
+                self.queue_at_capacity = True
 
     def merge(self, other: PriorityQueue) -> PriorityQueue:
         """
@@ -149,7 +154,6 @@ def compute_k_minhashes(data: List[Tuple[int, int]], k: int) -> PriorityQueue:
 
     Returns: A sorted list of (hash, element) pairs
     """
-
     minhashes = PriorityQueue(queue_size=k)
 
     # Need to initialize the virtual interval, and compute the hashes for it since it is
@@ -162,7 +166,7 @@ def compute_k_minhashes(data: List[Tuple[int, int]], k: int) -> PriorityQueue:
     # Now we can iterate over the rest of the data since the virtual interval has had
     # its hashes computed
     for start, end in data[1:]:
-        # Case 1: Interval is completely contained in the virutal interval
+        # Case 1: Interval is completely contained in the virtual interval
         if end <= virtual_end:
             continue
         # Case 2: The interval lies completely outside the virtual interval
@@ -185,8 +189,17 @@ def compute_k_minhashes(data: List[Tuple[int, int]], k: int) -> PriorityQueue:
 
 def hasher(x: int) -> int:
     """
-    I'm not sure if this hash is 2-independent, the criteria for a sufficient hash
-    function for the bottom-k approach, see https://arxiv.org/pdf/1303.5479v2.pdf
+    This is a 2-independent hash, required for error bounds for the bottom-k approach to
+    hold. See the following for details. This method is not ideal because we are
+    required to know a prime before hand, eventually will want to use right shift
+    instead of moduloing the primes.
+
+    `if the elements are 32-bit keys, we pick two random 64-bit numbers a and b. The
+    hash of key x is computed with the C-code (a * x + b) >> 32, where ∗ is 64-bit
+    multiplication which as usual discards overflow, and >> is a right shift.`
+
+    https://en.wikipedia.org/wiki/K-independent_hashing#Polynomials_with_random_coefficients
+    https://arxiv.org/pdf/1303.5479v2.pdf
     """
     return (A * x + B) % CHR_1_PRIME
 
