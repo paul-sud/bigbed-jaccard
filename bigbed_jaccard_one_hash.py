@@ -192,14 +192,23 @@ def hasher(x: int) -> int:
     This is a 2-independent hash, required for error bounds for the bottom-k approach to
     hold. See the following for details. This method is not ideal because we are
     required to know a prime before hand, eventually will want to use right shift
-    instead of moduloing the primes.
+    instead of moduloing the primes. Additionally, taking the modulo is slow.
 
     `if the elements are 32-bit keys, we pick two random 64-bit numbers a and b. The
     hash of key x is computed with the C-code (a * x + b) >> 32, where ∗ is 64-bit
     multiplication which as usual discards overflow, and >> is a right shift.`
 
+    In Python you'd need to use numpy int types to get the multiplication to overflow,
+    since Python ints can be arbitrarity large. But then you'd encounter overhead
+    casting back to python int types? Better to use rust core::num::Wrapping :)
+
+    See the last link for formula for computing shift-based hashing depending on the
+    input and output size in bits of the hashes. The formula above assumes a word length
+    of 64 bits (standard for x86), and both input x and output h(x) to be 32 bits.
+
     https://en.wikipedia.org/wiki/K-independent_hashing#Polynomials_with_random_coefficients
     https://arxiv.org/pdf/1303.5479v2.pdf
+    https://www.cs.utexas.edu/~yzhang/papers/5-indep-sicomp12.pdf
     """
     return (A * x + B) % CHR_1_PRIME
 
