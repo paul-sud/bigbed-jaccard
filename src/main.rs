@@ -7,6 +7,9 @@ use bigtools::seekableread::{Reopen, SeekableRead};
 use std::collections::{BinaryHeap, HashSet};
 use std::iter::FromIterator;
 use std::cmp::Reverse;
+use std::time::Instant;
+
+use rayon::prelude::*;
 
 const A: u64 = 11_927_359_292_700_924_260;
 const B: u64 = 6_512_515_406_574_399_413;
@@ -15,20 +18,29 @@ const CAPACITY: usize = 1_000_000;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let domain = "https://encode-public.s3.amazonaws.com";
-    let bigbed_path = "/2020/01/17/7d2573b1-86f4-4592-a68a-ac3d5d0372d6/ENCFF592UJG.bigBed";
-    let bb_path_2 = "/2016/11/13/87d48fc0-c813-4d07-a55b-b60ccde13b25/ENCFF187BSA.bigBed";
-    let bigbed = RemoteFile::new(&format!("{}{}", domain, bigbed_path));
-    let bigbed2 = RemoteFile::new(&format!("{}{}", domain, bb_path_2));
-    let mut reader = BigBedRead::from(bigbed).unwrap();
-    let mut reader2 = BigBedRead::from(bigbed2).unwrap();
-    let chrom_end = get_chrom_end(&mut reader, "chr1");
-    let data = get_data(&mut reader, "chr1", 0, chrom_end);
-    let data2 = get_data(&mut reader2, "chr1", 0, chrom_end);
-    let mut minhashes = compute_k_minhashes(&data, QUEUE_SIZE);
-    minhashes.shrink_to_queue_size();
-    let mut minhashes2 = compute_k_minhashes(&data2, QUEUE_SIZE);
-    minhashes2.shrink_to_queue_size();
-    println!("Jaccard: {}", jaccard(&minhashes, &minhashes2));
+    let bigbed_paths = [
+        "/2020/01/17/7d2573b1-86f4-4592-a68a-ac3d5d0372d6/ENCFF592UJG.bigBed",
+        "/2016/11/13/87d48fc0-c813-4d07-a55b-b60ccde13b25/ENCFF187BSA.bigBed"
+    ];
+    let minhashes = bigbed_paths
+        .par_iter()
+        .map(|bigbed_path| {
+            let bigbed = RemoteFile::new(&format!("{}{}", domain, bigbed_path));
+            let mut reader = BigBedRead::from(bigbed).unwrap();
+            let chrom_end = get_chrom_end(&mut reader, "chr1");
+            let mut start = Instant::now();
+            let data = get_data(&mut reader, "chr1", 0, chrom_end);
+            let mut duration = start.elapsed();
+            println!("Time elapsed in getting_data() is: {:?}", duration);
+            start = Instant::now();
+            let mut minhashes = compute_k_minhashes(&data, QUEUE_SIZE);
+            duration = start.elapsed();
+            println!("Time elapsed in compute_k_minhashes() is: {:?}", duration);
+            minhashes.shrink_to_queue_size();
+            minhashes
+        })
+        .collect::<Vec<_>>();
+    println!("Jaccard: {}", jaccard(&minhashes[0], &minhashes[1]));
     Ok(())
 }
 
@@ -40,7 +52,7 @@ struct HashWithValue {
 
 // We do not enforce the queue size on push (which requires a push and a pop), since
 // both push and pop incur a cost O(log n). Instead we use the queue size to determine
-// how many elements to read off. We want this to be a min queue so we use 
+// how many elements to read off. We want this to be a min queue so we use Reverse
 struct BoundedPriorityQueue {
     queue_size: usize,
     heap: BinaryHeap<Reverse<HashWithValue>>,

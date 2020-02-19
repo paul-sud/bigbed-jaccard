@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 bigtools = "0.1.2"
-rand = "0.3"
+rayon = "1.3.0"
