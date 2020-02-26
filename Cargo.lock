@@ -39,7 +39,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "bigbed"
+name = "bigbed-jaccard"
 version = "0.1.0"
 dependencies = [
  "bigtools 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",

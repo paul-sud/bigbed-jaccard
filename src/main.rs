@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let minhashes = bigbed_paths
         .par_iter()
         .map(|bigbed_path| {
+            // This should really be a library function
             let bigbed = RemoteFile::new(&format!("{}{}", domain, bigbed_path));
             let mut reader = BigBedRead::from(bigbed).unwrap();
             let chrom_end = get_chrom_end(&mut reader, "chr1");

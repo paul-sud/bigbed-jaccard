@@ -1,5 +1,5 @@
 [package]
-name = "bigbed"
+name = "bigbed-jaccard"
 version = "0.1.0"
 authors = ["Paul Sud <paulsud@stanford.edu>"]
 edition = "2018"
