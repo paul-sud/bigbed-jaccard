@@ -1,4 +1,4 @@
-use bigbed_jaccard::{compute_k_minhashes, get_chrom_end, get_data, jaccard};
+use bigbed_jaccard::{IntervalQuery,compute_k_minhashes, get_chrom_end, get_data, jaccard};
 
 use bigtools::bigbedread::BigBedRead;
 use bigtools::remote_file::RemoteFile;
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut reader = BigBedRead::from(bigbed).unwrap();
             let chrom_end = get_chrom_end(&mut reader, "chr1");
             let mut start = Instant::now();
-            let data = get_data(&mut reader, "chr1", 0, chrom_end);
+            let data = get_data(&mut reader, &IntervalQuery::new("chr1".to_string(), 0, chrom_end));
             let mut duration = start.elapsed();
             println!("Time elapsed in getting_data() is: {:?}", duration);
             start = Instant::now();
@@ -37,6 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (*bigbed_path, minhashes)
         })
         .collect::<Vec<_>>();
+
     for pair in minhashes.iter().combinations(2) {
         let start = Instant::now();
         println!(
