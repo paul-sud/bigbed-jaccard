@@ -1,4 +1,6 @@
-use bigbed_jaccard::{compute_k_minhashes, get_chrom_end, get_data, jaccard, IntervalQuery};
+use bigbed_jaccard::{
+    compute_k_minhashes, get_chrom_end, get_data, jaccard, BigBedReader, IntervalQuery,
+};
 
 use bigtools::bigbedread::BigBedRead;
 use bigtools::remote_file::RemoteFile;
@@ -51,5 +53,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         println!("Time elapsed in jaccard() is: {:?}", start.elapsed());
     }
+
+    // let bigbed_path = "/2020/01/17/7d2573b1-86f4-4592-a68a-ac3d5d0372d6/ENCFF592UJG.bigBed";
+    // let mut reader = BigBedReader::new(format!("{}{}", domain, bigbed_path));
+    // let mut reader = BigBedReader::new("ENCFF592UJG.bigBed".to_string());
+    // let chrom_end = reader.get_chrom_end("chr1")?;
+    // let data = reader.get_data(
+    //     &IntervalQuery::new("chr1".to_string(), 1000000, 1100000),
+    // );
+    // dbg!(data);
     Ok(())
 }
