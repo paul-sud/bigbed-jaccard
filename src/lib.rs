@@ -64,36 +64,92 @@ pub struct IntervalQuery {
 
 impl IntervalQuery {
     pub fn new(chrom: std::string::String, start: u32, end: u32) -> Self {
-        IntervalQuery {
-            chrom, start, end
-        }
+        IntervalQuery { chrom, start, end }
     }
 }
 
 enum FileOrUrlBigBedRead<T, U> {
-    FileRead(T),
-    UrlRead(U),
+    UrlRead(T),
+    FileRead(U),
 }
 
-struct BigBedReader<R: Reopen<S>, S: SeekableRead>{
-    reader: BigBedRead<R, S>,
+pub struct BigBedReader<T, U> {
+    reader: FileOrUrlBigBedRead<T, U>,
     uri: String,
-    chrom_data: Option<HashMap<std::string::String, ChromData>>
+    chrom_data: Option<HashMap<std::string::String, ChromData>>,
 }
 
-/// URI can refer to a local file, or a remote file accessible over HTTP. Remote file
-/// URIs must begin with http, otherwise it will be assumed the file is local.
-impl<R: Reopen<S>, S: SeekableRead> BigBedReader<R, S> {
-    pub fn new(uri: String) -> Self {
-        match uri.starts_with("http") {
-            true => {
-                let bigbed = RemoteFile::new(&uri);
-                BigBedReader { reader: BigBedRead::from(bigbed).unwrap(), uri, chrom_data: None } 
-            },
-            false => {
-                BigBedReader { reader: BigBedRead::from_file_and_attach(uri).unwrap(), uri, chrom_data: None }
+/// URI can refer to a local file or a remote file accessible over HTTP, will return a
+/// reader of the appropriate type, albeit wrapped in an enum. Remote file URIs must
+/// begin with http, otherwise it will be assumed the file is local.
+impl<T: BBIRead<RemoteFile>, U: BBIRead<std::fs::File>> BigBedReader<T, U> {
+    pub fn new(
+        uri: String,
+    ) -> BigBedReader<
+        BigBedRead<RemoteFile, RemoteFile>,
+        BigBedRead<bigtools::seekableread::ReopenableFile, std::fs::File>,
+    > {
+        if uri.starts_with("http") {
+            let bigbed = RemoteFile::new(&uri);
+            BigBedReader {
+                reader: FileOrUrlBigBedRead::UrlRead(BigBedRead::from(bigbed).unwrap()),
+                uri,
+                chrom_data: None,
+            }
+        } else {
+            BigBedReader {
+                reader: FileOrUrlBigBedRead::FileRead(
+                    BigBedRead::from_file_and_attach(uri.clone()).unwrap(),
+                ),
+                uri,
+                chrom_data: None,
             }
         }
+    }
+
+    fn get_chroms(&mut self) -> Vec<ChromAndSize> {
+        match &self.reader {
+            FileOrUrlBigBedRead::FileRead(rdr) => rdr.get_chroms(),
+            FileOrUrlBigBedRead::UrlRead(rdr) => rdr.get_chroms(),
+        }
+    }
+
+    /// Type parameters here are wonky. T and U refer to BBIRead trait, which has
+    /// get_chroms, but get_intervals is a method on the BigBedRead struct
+    pub fn get_data(&mut self, query: &IntervalQuery) -> Vec<BedEntry> {
+        let results: Vec<_> = match &self.reader {
+            FileOrUrlBigBedRead::UrlRead(rdr) => rdr
+                .get_interval(&query.chrom, query.start, query.end)
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap(),
+            FileOrUrlBigBedRead::FileRead(rdr) => rdr
+                .get_interval(&query.chrom, query.start, query.end)
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap(),
+        };
+        results
+    }
+
+    /// If the chrom data has not been fetched yet, we pull it from the reader.
+    /// Then in both cases we can extract the HashMap from the Option and return a
+    /// reference to it.
+    fn get_chrom_data(&mut self) -> &HashMap<std::string::String, ChromData> {
+        if self.chrom_data.is_none() {
+            let chroms = self.get_chroms();
+            let mut chrom_and_data = HashMap::new();
+            let mut sorted_chroms = chroms.iter().map(ChromInfo::from).collect::<Vec<_>>();
+            sorted_chroms.sort();
+            let mut offset = 0;
+            for chrom in sorted_chroms.iter_mut() {
+                chrom.data.offset = offset;
+                chrom_and_data.insert(chrom.name.clone(), chrom.data.clone());
+                offset += chrom.data.length;
+            }
+            self.chrom_data = Some(chrom_and_data);
+        }
+        self.chrom_data.as_ref().unwrap()
     }
 }
 
@@ -324,7 +380,18 @@ mod tests {
 
     #[test]
     fn test_offset_data() {
-        let mut data = [BedEntry {start: 1, end: 2, rest: "".to_string()}, BedEntry {start: 4, end: 10, rest: "".to_string()}];
+        let mut data = [
+            BedEntry {
+                start: 1,
+                end: 2,
+                rest: "".to_string(),
+            },
+            BedEntry {
+                start: 4,
+                end: 10,
+                rest: "".to_string(),
+            },
+        ];
         offset_data(&mut data, 3);
         assert_eq!(data[0].start, 4);
         assert_eq!(data[0].end, 5);
