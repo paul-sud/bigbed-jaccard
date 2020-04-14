@@ -79,16 +79,16 @@ pub struct BigBedReader<T, U> {
     chrom_data: Option<HashMap<std::string::String, ChromData>>,
 }
 
+type FileOrUrlBigBedReader = BigBedReader<
+    BigBedRead<RemoteFile, RemoteFile>,
+    BigBedRead<bigtools::seekableread::ReopenableFile, std::fs::File>,
+>;
+
 /// URI can refer to a local file or a remote file accessible over HTTP, will return a
 /// reader of the appropriate type, albeit wrapped in an enum. Remote file URIs must
 /// begin with http, otherwise it will be assumed the file is local.
-impl<T: BBIRead<RemoteFile>, U: BBIRead<std::fs::File>> BigBedReader<T, U> {
-    pub fn new(
-        uri: String,
-    ) -> BigBedReader<
-        BigBedRead<RemoteFile, RemoteFile>,
-        BigBedRead<bigtools::seekableread::ReopenableFile, std::fs::File>,
-    > {
+impl FileOrUrlBigBedReader {
+    pub fn new(uri: String) -> FileOrUrlBigBedReader {
         if uri.starts_with("http") {
             let bigbed = RemoteFile::new(&uri);
             BigBedReader {
@@ -114,10 +114,8 @@ impl<T: BBIRead<RemoteFile>, U: BBIRead<std::fs::File>> BigBedReader<T, U> {
         }
     }
 
-    /// Type parameters here are wonky. T and U refer to BBIRead trait, which has
-    /// get_chroms, but get_intervals is a method on the BigBedRead struct
     pub fn get_data(&mut self, query: &IntervalQuery) -> Vec<BedEntry> {
-        let results: Vec<_> = match &self.reader {
+        let results: Vec<_> = match &mut self.reader {
             FileOrUrlBigBedRead::UrlRead(rdr) => rdr
                 .get_interval(&query.chrom, query.start, query.end)
                 .unwrap()
