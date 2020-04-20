@@ -12,7 +12,7 @@ See [Details](#details) for more information on the algorithm.
 
 Clone this repo, `cd` into it, and run `cargo build --release`. The binary will then be available at `target/release/bigbed-jaccard`
 
-This will require that you have `cargo` installed, I would recommend using [rustup](rustup.rs) to install the Rust toolchain. Build has been tested on `rustc` version `1.42.0`
+This will require that you have `cargo` installed, I would recommend using [rustup](https://rustup.rs) to install the Rust toolchain. Build has been tested on `rustc` version `1.42.0`
 
 ## Usage
 
@@ -30,7 +30,7 @@ Running pairwise comparisons on the 2,677 bigBed files in [this file](files.txt)
 
 ## Details
 
-The minhash algorithm variant used here is bottom-_k_ minhashing, also known as one-permutation hashing (OPH), using a single 32-bit hash function described in [1].
+The minhash algorithm variant used here is bottom-_k_ minhashing, using a single 32-bit hash function described in [1].
 
 ## Future Work
 
@@ -39,6 +39,8 @@ I'd like to enable the ability to specify regions of interest for which to compu
 I'd also like to make the underlying code available as a Rust library and also generate Python (possibly NumPy) bindings for the Rust functions.
 
 Once this is accomplished, it should be more straightforward to interoperate with Jupyter notebooks for further analysis like clustering, multi-dimensional scaling (MDS), dimensionality reduction, etc.
+
+There is another interesting, but related problem which is that given a new bigBed file (query) not in the database, find the other files that are the most similar in sublinear time. This doesn't work well with the scheme presented here, you'd need to a) use something like an LSH forest or b) embedding the similarity matrix into Euclidean space then using a spatial indexing method like a R* tree.
 
 ## References
 
