@@ -17,6 +17,9 @@ bigtools = "0.1.2"
 rayon = "1.3.0"
 reqwest = "0.10.0"
 tempfile = "3"
+serde = { version = "1", features = ["derive"] }
+csv = "1.1"
+structopt = "0.3.7"
 
 [dev-dependencies]
 float-cmp = "0.6.0"
