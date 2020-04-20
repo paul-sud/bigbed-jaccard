@@ -1,7 +1,6 @@
 use bigtools::bbiread::{BBIRead, ChromAndSize};
 use bigtools::bigbedread::BigBedRead;
 use bigtools::bigwig::BedEntry;
-use bigtools::remote_file::RemoteFile;
 use bigtools::seekableread::{Reopen, SeekableRead};
 
 use std::cmp::Reverse;
@@ -9,6 +8,8 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
 use std::iter::FromIterator;
+
+pub mod request;
 
 // Hash coefficients
 const A: u64 = 11_927_359_292_700_924_260;
@@ -213,7 +214,7 @@ pub fn get_chrom_end<R: Reopen<S> + 'static, S: SeekableRead + 'static>(
     chrom.length
 }
 
-fn get_chrom_data(chroms: &[ChromAndSize]) -> HashMap<std::string::String, ChromData> {
+pub fn get_chrom_data(chroms: &[ChromAndSize]) -> HashMap<std::string::String, ChromData> {
     let mut chrom_and_data = HashMap::new();
     let mut sorted_chroms = chroms.iter().map(ChromInfo::from).collect::<Vec<_>>();
     sorted_chroms.sort();
