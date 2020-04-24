@@ -34,14 +34,10 @@ The minhash algorithm variant used here is bottom-_k_ minhashing, using a single
 
 ## Future Work
 
-I'd like to enable the ability to specify regions of interest for which to compute the jaccard. The code should determine based on the number of query intervals and the query range whether to download to a tempfile (currently hardwired behavior) or to query the bigBed remotely. More benchmarking is needed to see how those decisions should be made.
-
-I'd also like to make the underlying code available as a Rust library and also generate Python (possibly NumPy) bindings for the Rust functions.
-
-Once this is accomplished, it should be more straightforward to interoperate with Jupyter notebooks for further analysis like clustering, multi-dimensional scaling (MDS), dimensionality reduction, etc.
-
-There is another interesting, but related problem which is that given a new bigBed file (query) not in the database, find the other files that are the most similar in sublinear time. This doesn't work well with the scheme presented here, you'd need to a) use something like an LSH forest or b) embedding the similarity matrix into Euclidean space then using a spatial indexing method like a R* tree.
+I'd like to make the underlying code available as a Rust library and also generate Python (possibly NumPy) bindings for the Rust functions.
 
 ## References
 
-1. Mikkel Thorup. 2013. Bottom-k and priority sampling, set similarity and subset sums with minimal independence. In Proceedings of the forty-fifth annual ACM symposium on Theory of Computing (STOC ’13). Association for Computing Machinery, New York, NY, USA, 371–380. DOI:https://doi.org/10.1145/2488608.2488655
+1. Mikkel Thorup. 2013. Bottom-k and priority sampling, set similarity and subset sums with minimal independence. In Proceedings of the forty-fifth annual ACM symposium on Theory of Computing (STOC ’13). Association for Computing Machinery, New York, NY, USA, 371–380.
+
+2. Anshumali Shrivastava and Ping Li. 2014. Improved densification of one permutation hashing. In Proceedings of the Thirtieth Conference on Uncertainty in Artificial Intelligence (UAI’14). AUAI Press, Arlington, Virginia, USA, 732–741.
