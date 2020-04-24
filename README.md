@@ -10,7 +10,7 @@ See [Details](#details) for more information on the algorithm.
 
 ## Installation
 
-Clone this repo, `cd` into it, and run `cargo build --release`. The binary will then be available at `target/release/bigbed-jaccard`
+Clone this repo, `cd` into it, and run `cargo build --release`. The binary will then be available at `target/release/bigbed-jaccard-similarity-matrix`
 
 This will require that you have `cargo` installed, I would recommend using [rustup](https://rustup.rs) to install the Rust toolchain. Build has been tested on `rustc` version `1.42.0`
 
@@ -19,7 +19,7 @@ This will require that you have `cargo` installed, I would recommend using [rust
 Here, `infile` is simply a file containing a list of file URLs, one per line, and `outfile` is the name of the file to write the comparisons to.
 
 ```bash
-$ target/release/bigbed-jaccard [infile] [outfile]
+$ target/release/bigbed-jaccard-similarity-matrix [infile] [outfile]
 ```
 
 There is some utility code in this repository to facilitate data aquisition from the [ENCODE portal](https://www.encodeproject.org). Namely, [this script](scripts/get_urls_from_report.py) will allow you to flatten ENCODE file report TSVs containing JSON objects in the `cloud_metadata` field, requires `pandas>=1.0`. You can then convert the output of that script into a file list by extracting the `url` field and deleting the header.
