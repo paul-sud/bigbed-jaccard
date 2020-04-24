@@ -3,17 +3,17 @@ use bigtools::bigbedread::BigBedRead;
 use bigtools::bigwig::BedEntry;
 use bigtools::seekableread::{Reopen, SeekableRead};
 
+use crate::hash::hash;
+
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
 use std::iter::FromIterator;
 
+pub mod hash;
+pub mod oph;
 pub mod request;
-
-// Hash coefficients
-const A: u64 = 11_927_359_292_700_924_260;
-const B: u64 = 6_512_515_406_574_399_413;
 
 // Min queue capacity
 const CAPACITY: usize = 1_000_000;
@@ -186,11 +186,6 @@ pub fn jaccard(sig_a: &BoundedPriorityQueue, sig_b: &BoundedPriorityQueue) -> f6
     let a_intersect_b = HashSet::from_iter(sig_a_set.intersection(&sig_b_set).copied());
     let shared = merged.intersection(&a_intersect_b);
     shared.count() as f64 / sig_a.queue_size as f64
-}
-
-/// See https://arxiv.org/pdf/1303.5479v2.pdf for details.
-fn hash(value: u32) -> u32 {
-    (((A.overflowing_mul(value as u64).0).overflowing_add(B).0) >> 32) as u32
 }
 
 pub fn get_data<R: Reopen<S> + 'static, S: SeekableRead + 'static>(
@@ -396,11 +391,5 @@ mod tests {
         other_queue.push(HashWithValue { hash: 7, value: 10 });
         let result = jaccard(&queue, &other_queue);
         assert!(approx_eq!(f64, result, 0.5));
-    }
-
-    #[test]
-    fn test_hash() {
-        let result = hash(100);
-        assert_eq!(result, 48_913_034);
     }
 }

@@ -20,6 +20,7 @@ tempfile = "3"
 serde = { version = "1", features = ["derive"] }
 csv = "1.1"
 structopt = "0.3.7"
+rand = "0.7.3"
 
 [dev-dependencies]
 float-cmp = "0.6.0"
