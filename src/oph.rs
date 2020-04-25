@@ -18,6 +18,17 @@ impl fmt::Display for EmptySketchError {
 
 impl Error for EmptySketchError {}
 
+#[derive(Debug)]
+pub struct SketchLengthMismatchError;
+
+impl fmt::Display for SketchLengthMismatchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Sketches to compare must be the same length")
+    }
+}
+
+impl Error for SketchLengthMismatchError {}
+
 // Seed for generating OPH indicators for densification
 // Generated with this code:
 // use rand::prelude::*;
@@ -103,6 +114,33 @@ impl OnePermutationHasher {
         Ok(dense)
     }
 
+    /// Implementation of optimal densification scheme from Shrivastava 2017, see
+    /// https://arxiv.org/pdf/1703.04664.pdf . Rather than borrowing from neighboring
+    /// bins, we randomly search the bin indexed by the evauluation of a hash function.
+    /// We feed the number of attempts to avoid cycles.
+    fn densify_optimal(&self, sketch: &[Option<u32>]) -> Result<Vec<u32>, EmptySketchError> {
+        let mut dense = vec![0; self.num_bins];
+        for (i, value) in sketch.iter().enumerate() {
+            dense[i] = match value {
+                Some(val) => *val,
+                None => {
+                    let mut attempts = 1;
+                    let mut next_bin = hash(i as u32 + attempts) % self.num_bins as u32;
+                    while sketch[next_bin as usize].is_none() {
+                        attempts += 1;
+                        next_bin = hash(i as u32 + attempts) % self.num_bins as u32;
+                    }
+                    match sketch[next_bin as usize] {
+                        // We already checked above that value is Some.
+                        Some(value) => value,
+                        _ => return Err(EmptySketchError),
+                    }
+                }
+            };
+        }
+        Ok(dense)
+    }
+
     /// Return an un-densified sketch of the data using the one-permutation hashing (OPH).
     /// TODO: this should be decoupled from BedEntry specific things to just accept a
     /// bag of integers. The overlapping BedEntry logic should be a separate method.
@@ -161,11 +199,33 @@ impl OnePermutationHasher {
         let sketch = self.sketch(data);
         self.densify(&sketch)
     }
+
+    /// Compute Jaccard estimator, see Anshumali & Li `Densifying One Permutation
+    /// Hashing via Rotation for Fast Near Neighbor Search` for details,
+    /// http://proceedings.mlr.press/v32/shrivastava14.pdf
+    /// Take the number of matching elements and divide by the total length.
+    pub fn jaccard(
+        dense_sketch_1: &[u32],
+        dense_sketch_2: &[u32],
+    ) -> Result<f64, SketchLengthMismatchError> {
+        let total = dense_sketch_1.len();
+        if dense_sketch_2.len() != total {
+            return Err(SketchLengthMismatchError);
+        }
+        let mut shared = 0;
+        for (val1, val2) in dense_sketch_1.iter().zip(dense_sketch_2.iter()) {
+            if val1 == val2 {
+                shared += 1;
+            }
+        }
+        Ok(shared as f64 / total as f64)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use float_cmp::approx_eq;
 
     /// Test using the constant RNG seed.
     #[test]
@@ -179,6 +239,30 @@ mod tests {
         let mut oph = OnePermutationHasher::new(4);
         let data = [None, None, None, Some(2)];
         let dense = oph.densify(&data).unwrap();
-        assert_eq!(dense, vec![2 + 3 * oph.offset, 2 + 2 * oph.offset, 2 + oph.offset, 2]);
+        assert_eq!(
+            dense,
+            vec![2 + 3 * oph.offset, 2 + 2 * oph.offset, 2 + oph.offset, 2]
+        );
+    }
+
+    #[test]
+    #[allow(clippy::match_wild_err_arm)]
+    fn test_one_permutation_hasher_jaccard() {
+        let sketch1 = vec![1, 2, 0];
+        let sketch2 = vec![1, 0, 2];
+        let result = match OnePermutationHasher::jaccard(&sketch1, &sketch2) {
+            Ok(val) => val,
+            Err(_) => panic!("This test should not error."),
+        };
+        let expected = 1. / 3.;
+        assert!(approx_eq!(f64, result, expected, ulps = 2));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_one_permutation_hasher_jaccard_length_mismatch_raises() {
+        let sketch1 = vec![1, 2, 0];
+        let sketch2 = vec![1, 0];
+        let _ = OnePermutationHasher::jaccard(&sketch1, &sketch2).unwrap();
     }
 }
