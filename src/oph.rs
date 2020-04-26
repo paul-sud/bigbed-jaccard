@@ -39,14 +39,23 @@ impl Error for SketchLengthMismatchError {}
 // }
 const OPH_SEED: u64 = 12_963_566_592_248_599_713;
 
+enum DensificationMethod {
+    Optimal,
+    Improved,
+}
+
 pub struct OnePermutationHasher {
     num_bins: usize,
     offset: u32,
     rng: StdRng,
     indicators: Option<Vec<bool>>,
+    densification_method: DensificationMethod,
 }
 
 impl OnePermutationHasher {
+    /// Initalize struct that will use optimal densification. To use the improved
+    /// densification from Shrivastava and Li 2014, use the other constructor
+    /// `new_with_improved_densification`
     pub fn new(num_bins: usize) -> Self {
         let rng: StdRng = SeedableRng::seed_from_u64(OPH_SEED);
         let offset = std::u32::MAX / (num_bins as u32) + 1;
@@ -55,6 +64,19 @@ impl OnePermutationHasher {
             offset,
             rng,
             indicators: None,
+            densification_method: DensificationMethod::Optimal,
+        }
+    }
+
+    pub fn new_with_improved_densification(num_bins: usize) -> Self {
+        let rng: StdRng = SeedableRng::seed_from_u64(OPH_SEED);
+        let offset = std::u32::MAX / (num_bins as u32) + 1;
+        OnePermutationHasher {
+            num_bins,
+            offset,
+            rng,
+            indicators: None,
+            densification_method: DensificationMethod::Improved,
         }
     }
 
@@ -79,7 +101,7 @@ impl OnePermutationHasher {
     /// depending on the value for the indicator for that bin. Then we fill the bin with
     /// the value of the neighboring non-empty bin plus a constant times the number of
     /// bins traveled to reach the non-empty bin (always at least 1).
-    fn densify(&mut self, sketch: &[Option<u32>]) -> Result<Vec<u32>, EmptySketchError> {
+    fn densify_improved(&mut self, sketch: &[Option<u32>]) -> Result<Vec<u32>, EmptySketchError> {
         let mut dense = vec![0; self.num_bins];
         let offset = self.offset;
         let indicators = self.get_indicators();
@@ -197,7 +219,10 @@ impl OnePermutationHasher {
 
     pub fn dense_sketch(&mut self, data: &[BedEntry]) -> Result<Vec<u32>, EmptySketchError> {
         let sketch = self.sketch(data);
-        self.densify(&sketch)
+        match self.densification_method {
+            DensificationMethod::Optimal => self.densify_optimal(&sketch),
+            DensificationMethod::Improved => self.densify_improved(&sketch),
+        }
     }
 
     /// Compute Jaccard estimator, see Anshumali & Li `Densifying One Permutation
@@ -235,13 +260,24 @@ mod tests {
     }
 
     #[test]
-    fn test_one_permutation_hasher_densify() {
+    fn test_one_permutation_hasher_densify_improved() {
         let mut oph = OnePermutationHasher::new(4);
         let data = [None, None, None, Some(2)];
-        let dense = oph.densify(&data).unwrap();
+        let dense = oph.densify_improved(&data).unwrap();
         assert_eq!(
             dense,
             vec![2 + 3 * oph.offset, 2 + 2 * oph.offset, 2 + oph.offset, 2]
+        );
+    }
+
+    #[test]
+    fn test_one_permutation_hasher_densify_optimal() {
+        let oph = OnePermutationHasher::new(4);
+        let data = [None, None, Some(1), Some(2)];
+        let dense = oph.densify_optimal(&data).unwrap();
+        assert_eq!(
+            dense,
+            vec![2, 1, 1, 2]
         );
     }
 
