@@ -12,6 +12,10 @@ path = "src/lib.rs"
 name = "bigbed-jaccard-similarity-matrix"
 path = "src/bin/bigbed_jaccard_similarity_matrix.rs"
 
+[[bin]]
+name = "bigbed-oph-lsh"
+path = "src/bin/bigbed_oph_lsh.rs"
+
 [dependencies]
 bigtools = "0.1.2"
 csv = "1.1"

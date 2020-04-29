@@ -39,7 +39,7 @@ pub struct OnePermutationHasher {
     offset: u32,
     rng: StdRng,
     indicators: Option<Vec<bool>>,
-    densification_method: DensificationMethod,
+    densification_method: Option<DensificationMethod>,
 }
 
 impl OnePermutationHasher {
@@ -54,20 +54,13 @@ impl OnePermutationHasher {
             offset,
             rng,
             indicators: None,
-            densification_method: DensificationMethod::Optimal,
+            densification_method: Some(DensificationMethod::Optimal)
         }
     }
 
-    pub fn new_with_improved_densification(num_bins: usize) -> Self {
-        let rng: StdRng = SeedableRng::seed_from_u64(OPH_SEED);
-        let offset = std::u32::MAX / (num_bins as u32) + 1;
-        OnePermutationHasher {
-            num_bins,
-            offset,
-            rng,
-            indicators: None,
-            densification_method: DensificationMethod::Improved,
-        }
+    pub fn with_improved_densification(mut self) -> Self {
+        self.densification_method = Some(DensificationMethod::Improved);
+        self
     }
 
     pub fn get_indicators(&mut self) -> &Vec<bool> {
@@ -174,8 +167,9 @@ impl OnePermutationHasher {
     pub fn dense_sketch(&mut self, data: &[u32]) -> Result<Vec<u32>, EmptySketchError> {
         let sketch = self.sketch(data);
         match self.densification_method {
-            DensificationMethod::Optimal => self.densify_optimal(&sketch),
-            DensificationMethod::Improved => self.densify_improved(&sketch),
+            Some(DensificationMethod::Optimal) => self.densify_optimal(&sketch),
+            Some(DensificationMethod::Improved) => self.densify_improved(&sketch),
+            None => panic!("No densification method set")
         }
     }
 
@@ -215,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_one_permutation_hasher_densify_improved() {
-        let mut oph = OnePermutationHasher::new(4);
+        let mut oph = OnePermutationHasher::new(4).with_improved_densification();
         let data = [None, None, None, Some(2)];
         let dense = oph.densify_improved(&data).unwrap();
         assert_eq!(
