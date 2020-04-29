@@ -1,5 +1,3 @@
-use bigtools::bigwig::BedEntry;
-
 use crate::hash::hash;
 
 use rand::prelude::*;
@@ -29,14 +27,6 @@ impl fmt::Display for SketchLengthMismatchError {
 
 impl Error for SketchLengthMismatchError {}
 
-// Seed for generating OPH indicators for densification
-// Generated with this code:
-// use rand::prelude::*;
-// fn main() {
-//     let mut rng = rand::thread_rng();
-//     let result: u64 = rng.gen();
-//     dbg!(result);
-// }
 const OPH_SEED: u64 = 12_963_566_592_248_599_713;
 
 enum DensificationMethod {
@@ -164,18 +154,9 @@ impl OnePermutationHasher {
     }
 
     /// Return an un-densified sketch of the data using the one-permutation hashing (OPH).
-    /// TODO: this should be decoupled from BedEntry specific things to just accept a
-    /// bag of integers. The overlapping BedEntry logic should be a separate method.
-    /// When generators hit stable then it will be easy to convert, for now converting
-    /// to an iterator would require storing the iterator state on a struct manually.
-    fn sketch(&self, data: &[BedEntry]) -> Vec<Option<u32>> {
+    fn sketch(&self, data: &[u32]) -> Vec<Option<u32>> {
         let mut output = vec![None; self.num_bins];
-        let BedEntry {
-            start: virtual_start,
-            end: mut virtual_end,
-            ..
-        } = data[0];
-        for i in virtual_start..virtual_end {
+        for &i in data.iter() {
             let current_hash = hash(i);
             let bin = (current_hash % self.num_bins as u32) as usize;
             match output[bin] {
@@ -187,37 +168,10 @@ impl OnePermutationHasher {
                 None => output[bin] = Some(current_hash),
             }
         }
-        let (mut start_at, mut end_at);
-        for datum in data.iter().skip(1) {
-            let BedEntry { start, end, .. } = *datum;
-            if end <= virtual_end {
-                continue;
-            } else if start >= virtual_end {
-                start_at = start;
-                end_at = end;
-                virtual_end = end;
-            } else {
-                start_at = virtual_end;
-                end_at = end;
-                virtual_end = end;
-            }
-            for i in start_at..end_at {
-                let current_hash = hash(i);
-                let bin = (current_hash % self.num_bins as u32) as usize;
-                match output[bin] {
-                    Some(val) => {
-                        if current_hash < val {
-                            output[bin] = Some(current_hash);
-                        }
-                    }
-                    None => output[bin] = Some(current_hash),
-                }
-            }
-        }
         output
     }
 
-    pub fn dense_sketch(&mut self, data: &[BedEntry]) -> Result<Vec<u32>, EmptySketchError> {
+    pub fn dense_sketch(&mut self, data: &[u32]) -> Result<Vec<u32>, EmptySketchError> {
         let sketch = self.sketch(data);
         match self.densification_method {
             DensificationMethod::Optimal => self.densify_optimal(&sketch),
@@ -229,9 +183,9 @@ impl OnePermutationHasher {
     /// Hashing via Rotation for Fast Near Neighbor Search` for details,
     /// http://proceedings.mlr.press/v32/shrivastava14.pdf
     /// Take the number of matching elements and divide by the total length.
-    pub fn jaccard(
-        dense_sketch_1: &[u32],
-        dense_sketch_2: &[u32],
+    pub fn jaccard<T: Eq>(
+        dense_sketch_1: &[T],
+        dense_sketch_2: &[T],
     ) -> Result<f64, SketchLengthMismatchError> {
         let total = dense_sketch_1.len();
         if dense_sketch_2.len() != total {
@@ -275,10 +229,7 @@ mod tests {
         let oph = OnePermutationHasher::new(4);
         let data = [None, None, Some(1), Some(2)];
         let dense = oph.densify_optimal(&data).unwrap();
-        assert_eq!(
-            dense,
-            vec![2, 1, 1, 2]
-        );
+        assert_eq!(dense, vec![2, 1, 1, 2]);
     }
 
     #[test]

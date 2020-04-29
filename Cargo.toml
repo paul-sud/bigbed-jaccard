@@ -8,7 +8,9 @@ edition = "2018"
 name = "bigbed_jaccard"
 path = "src/lib.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "bigbed-jaccard-similarity-matrix"
+path = "src/bin/bigbed_jaccard_similarity_matrix.rs"
 
 [dependencies]
 bigtools = "0.1.2"

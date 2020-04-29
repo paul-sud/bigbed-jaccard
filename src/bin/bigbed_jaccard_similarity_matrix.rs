@@ -1,7 +1,6 @@
+use bigbed_jaccard::bed::{get_offset_data, IntervalQuery};
+use bigbed_jaccard::bottom_k::{compute_k_minhashes, jaccard, BoundedPriorityQueue};
 use bigbed_jaccard::request::download_to_tempfile;
-use bigbed_jaccard::{
-    compute_k_minhashes, get_offset_data, jaccard, BoundedPriorityQueue, IntervalQuery,
-};
 
 use bigtools::bbiread::BBIRead;
 use bigtools::bigbedread::BigBedRead;
