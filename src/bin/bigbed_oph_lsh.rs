@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let query_results = lsh.query(&sketches[0].1).unwrap();
     duration = start.elapsed();
     println!("Time querying LSH is: {:?}", duration);
-    print!("Query results are {:?}", query_results);
+    println!("Query results are {:?}", query_results);
     Ok(())
 }
 
