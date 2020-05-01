@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut duration = start.elapsed();
     println!("Time inserting into LSH is: {:?}", duration);
     start = Instant::now();
-    let query_results = lsh.query(&sketches[0].1).unwrap();
+    let query_results = lsh.ranked_query(&sketches[0].1).unwrap();
     duration = start.elapsed();
     println!("Time querying LSH is: {:?}", duration);
     println!("Query results are {:?}", query_results);

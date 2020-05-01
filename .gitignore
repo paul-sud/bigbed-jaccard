@@ -4,3 +4,5 @@ venv
 __pycache__/*
 target
 *.pyc
+# Too big for git, ~100 MB
+data/jaccard.tsv
