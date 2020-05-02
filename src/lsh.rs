@@ -120,12 +120,12 @@ impl<K: Clone + Eq + Hash + Send + Sync, V: Clone + Copy + Hash + Ord + Send + S
     /// results, see `ranked_query`.
     pub fn query(&self, sketch: &[K]) -> Option<Vec<V>> {
         let chunked_sketch = self.chunk_sketch(sketch).unwrap();
+        let hashers = self.hashers.clone();
+        let map = hashers.lock().unwrap();
         let mut results = chunked_sketch
             .par_iter()
             .enumerate()
             .map(|(i, chunk)| {
-                let hashers = self.hashers.clone();
-                let map = hashers.lock().unwrap();
                 // Index i should always be in the map. However there are no such
                 // guarantees for the chunk, so we can't unwrap.
                 match map.get(&i).unwrap().get(chunk) {
